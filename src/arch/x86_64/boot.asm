@@ -13,6 +13,7 @@ start:
 
 	call set_up_page_tables
 	call enable_paging
+	call set_up_sse
 
 	; load the 64-bit GDT
 	lgdt [gdt64.pointer]
@@ -150,6 +151,28 @@ enable_paging:
 	mov cr0, eax
 
 	ret
+
+; Check for SSE and enable it. If unsupported throw error "a".
+set_up_sse:
+	; check for SSE
+	mov eax, 0x1
+	cpuid
+	test edx, 1<<25
+	jz .no_sse
+
+	;enable SSE
+	mov eax, cr0
+	and ax, 0xFFFB ; clear coprocessor emulation CR0.EM
+	or ax, 0x2     ; set coprocessor monitoring CR0.MP
+	mov cr0, eax
+	mov eax, cr4
+	or ax, 3 << 9  ; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
+	mov cr4, eax
+
+	ret
+.no_sse
+	mov al, "a"
+	jmp error
 
 section .rodata
 ; 64-bit Global descriptor table

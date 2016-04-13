@@ -1,0 +1,10 @@
+[package]
+name = "park_os"
+version = "0.0.1"
+authors = ["Alex Parker <3zanders@gmail.com>"]
+
+[dependencies]
+rlibc = "0.1.4"
+
+[lib]
+crate-type = ["staticlib"]

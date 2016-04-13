@@ -1,0 +1,12 @@
+[root]
+name = "park_os"
+version = "0.0.1"
+dependencies = [
+ "rlibc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rlibc"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
