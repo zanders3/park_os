@@ -54,6 +54,7 @@ impl Writer {
 	pub fn write_byte(&mut self, byte: u8) {
 		match byte {
 			b'\n' => self.new_line(),
+			b'\t' => for _ in 0..4 { self.write_byte(b' ') },
 			byte => {
 				if self.column_position >= BUFFER_WIDTH {
 					self.new_line()

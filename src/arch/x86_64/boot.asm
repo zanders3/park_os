@@ -6,6 +6,9 @@ bits 32
 start:
 	; setup small stack
 	mov esp, stack_top
+	; move multiboot info to edi - which is the first function call register
+	; this isn't overwritten by the asm below
+	mov edi, ebx 
 
 	call check_multiboot
 	call check_cpuid
@@ -15,7 +18,7 @@ start:
 	call enable_paging
 	call set_up_sse
 
-	; load the 64-bit GDT
+	; load the 64-bit global descriptor table
 	lgdt [gdt64.pointer]
 
 	; update selectors
@@ -197,5 +200,5 @@ p2_table:
 	resb 4096
 ; Small initial stack to get us to rust
 stack_bottom:
-	resb 64
+	resb 4096
 stack_top:
