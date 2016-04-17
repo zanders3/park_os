@@ -1,9 +1,11 @@
 mod area_frame_allocator;
-mod paging;
 mod table;
+mod page;
+mod entry;
 
 pub use self::area_frame_allocator::AreaFrameAllocator;
-use self::paging::PhysicalAddress;
+pub use self::page::test_paging;
+use self::page::PhysicalAddress;
 
 pub const PAGE_SIZE: usize = 4096;
 

@@ -206,5 +206,5 @@ p2_table:
 	resb 4096
 ; Small initial stack to get us to rust
 stack_bottom:
-	resb 4096
+	resb 4096 * 2
 stack_top:

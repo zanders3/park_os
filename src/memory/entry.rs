@@ -32,6 +32,7 @@ impl Entry {
 		EntryFlags::from_bits_truncate(self.0)
 	}
 
+	//converts the address represented by this Table Entry into a Physical Frame
 	pub fn pointed_frame(&self) -> Option<Frame> {
 		if self.flags().contains(PRESENT) {
 			Some(Frame::containing_address(self.0 as usize & ADDRESS_MASK))
