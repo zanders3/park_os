@@ -1,5 +1,6 @@
 #![feature(lang_items)]
 #![feature(const_fn)]
+#![feature(asm)]
 #![no_std]
 
 extern crate rlibc;
@@ -43,7 +44,7 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 		kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas()
 	);
 	memory::test_paging(&mut frame_allocator);
-
+	memory::remap_kernel(&mut frame_allocator, boot_info);
 	println!("Done");
 	loop {}
 }
@@ -52,5 +53,9 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 #[lang = "panic_fmt"] extern fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
 	println!("\n\nPANIC in {} at line {}:", file, line);
 	println!("	{}", fmt);
-	loop{}
+	loop{
+		unsafe {
+			asm!("hlt");
+		}
+	}
 }

@@ -6,7 +6,7 @@ http://os.phil-opp.com/multiboot-kernel.html
 ## Building
 
 ```
-sudo apt-get install nasm xorriso git qemu
+sudo apt-get install nasm xorriso git qemu gdb
 curl -sf https://raw.githubusercontent.com/brson/multirust/master/blastoff.sh | sh
 git clone https://github.com/zanders3/park_os
 cd park_os

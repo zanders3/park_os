@@ -1,5 +1,5 @@
 use memory::entry::*;
-use memory::page::ENTRY_COUNT;
+use memory::pagetable::ENTRY_COUNT;
 use core::ops::{Index, IndexMut};
 use core::marker::PhantomData;
 use memory::FrameAllocator;

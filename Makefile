@@ -10,7 +10,7 @@ assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
 assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
     build/arch/$(arch)/%.o, $(assembly_source_files))
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso gdb
 
 all: $(kernel)
 
@@ -18,7 +18,14 @@ clean:
 	@rm -r build
 
 run: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso)
+	@qemu-system-x86_64 -cdrom $(iso) -s
+
+
+debug: $(iso)
+	@qemu-system-x86_64 -cdrom $(iso) -s -S
+
+gdb:
+	@tools/rust-gdb -tui "build/kernel-x86_64.bin" -ex "target remote :1234"
 
 iso: $(iso)
 
@@ -33,7 +40,7 @@ $(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
 	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 cargo:
-	@cargo rustc --target $(target) -- -Z no-landing-pads
+	cargo rustc --target $(target) -- -Z no-landing-pads
 
 # compile assembly files
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm

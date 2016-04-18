@@ -2,16 +2,18 @@ mod area_frame_allocator;
 mod table;
 mod page;
 mod entry;
+mod pagetable;
 
 pub use self::area_frame_allocator::AreaFrameAllocator;
-pub use self::page::test_paging;
+pub use self::pagetable::test_paging;
+pub use self::pagetable::remap_kernel;
 use self::page::PhysicalAddress;
 
 pub const PAGE_SIZE: usize = 4096;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Frame {
-	number: usize
+	number: usize,
 }
 
 impl Frame {
@@ -20,6 +22,9 @@ impl Frame {
 	}
 	fn start_address(&self) -> PhysicalAddress {
 		self.number * PAGE_SIZE
+	}
+	fn clone(&self) -> Frame {
+		Frame { number: self.number }
 	}
 }
 
