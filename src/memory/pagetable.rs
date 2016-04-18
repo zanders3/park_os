@@ -50,6 +50,7 @@ struct TempPageTable {
 impl TempPageTable {
 	pub fn new_page_table<A>(page: Page, active_table: &mut PageTable, allocator: &mut A) -> TempPageTable where A : FrameAllocator {
 		let frame = allocator.allocate_frame().expect("no more frames");
+		println!("Allocating new page {:?} using {:?}", page, frame);
 		active_table.map_to(page, frame.clone(), WRITABLE, allocator);
 		let table = unsafe { &mut *(page.start_address() as *mut Table<Level4>) };
 		table.zero();
@@ -216,9 +217,25 @@ pub fn test_paging<A>(allocator : &mut A) where A : FrameAllocator {
 pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A : FrameAllocator {
 	let mut active_table = unsafe { PageTable::new_active() };
 
-	let mut temp_table = TempPageTable::new_page_table(Page::containing_address(0xcafebabe), &mut active_table, allocator);
+	let mut temp_table = TempPageTable::new_page_table(Page::containing_address(0xdeadbeef), &mut active_table, allocator);
 	temp_table.with(&mut active_table, |mapper| {
+		let elf_sections_tag = boot_info.elf_sections_tag().expect("Memory map tag required");
 
+		for section in elf_sections_tag.sections() {
+			use memory::entry::WRITABLE;
+			//section not loaded into memory - no need to map it!
+			if !section.is_allocated() {
+				continue;
+			}
+			assert!(section.addr % (PAGE_SIZE as u64) == 0, "sections need to be page aligned");
+
+			println!("Mapping section at addr: {:#x}, size: {:#x}", section.addr, section.size);
+			let start_frame = Frame::containing_address(section.start_address());
+			let end_frame = Frame::containing_address(section.end_address() - 1);
+			for frame in Frame::range_inclusive(start_frame, end_frame) {
+				mapper.identity_map(frame, WRITABLE, allocator);
+			}
+		}
 	});
 }
 

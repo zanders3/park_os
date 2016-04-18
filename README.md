@@ -3,7 +3,7 @@
 A toy OS (bootloader TBH) based upon/ripped off this fantastic series of blog posts:
 http://os.phil-opp.com/multiboot-kernel.html
 
-## Building
+## Building (assuming Ubuntu Server 14.04 LTS)
 
 ```
 sudo apt-get install nasm xorriso git qemu gdb
