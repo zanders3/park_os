@@ -71,10 +71,12 @@ impl TempPageTable {
 		active_table.p4_mut()[511].set(self.frame.clone(), PRESENT | WRITABLE);
 		unsafe { flush_tlb_all(); }
 
-		let mut mapper = TempPageTableMapper {
-			table: &mut self.table
-		};
-		f(&mut mapper);
+		{
+			let mut mapper = TempPageTableMapper {
+				table: active_table
+			};
+			f(&mut mapper);
+		}
 
 		active_table.p4_mut()[511].set(old_page, PRESENT | WRITABLE);
 		unsafe { flush_tlb_all(); }
@@ -238,4 +240,3 @@ pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A :
 		}
 	});
 }
-
