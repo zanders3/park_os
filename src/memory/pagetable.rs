@@ -43,8 +43,7 @@ impl<'a> TempPageTableMapper<'a> {
 }
 
 struct TempPageTable {
-	frame: Frame,
-	table: PageTable
+	frame: Frame
 }
 
 impl TempPageTable {
@@ -58,10 +57,7 @@ impl TempPageTable {
 		active_table.unmap(page, allocator);
 
 		TempPageTable {
-			frame: frame,
-			table: PageTable {
-				p4: table
-			}
+			frame: frame
 		}
 	}
 
@@ -80,6 +76,10 @@ impl TempPageTable {
 
 		active_table.p4_mut()[511].set(old_page, PRESENT | WRITABLE);
 		unsafe { flush_tlb_all(); }
+	}
+
+	pub fn make_active(&mut self) {
+		unsafe { cr3_write(self.frame.start_address() as u64); }
 	}
 }
 
@@ -165,12 +165,6 @@ impl PageTable {
 		p1[page.p1_index()].set(frame, flags | PRESENT);
 	}
 
-	//Modify the page tables to map a Page to a new Physical Frame
-	pub fn map<A>(&mut self, page: Page, flags: EntryFlags, allocator: &mut A) where A : FrameAllocator {
-		let frame = allocator.allocate_frame().expect("no frames available");
-		self.map_to(page, frame, flags, allocator);
-	}
-
 	//Modify the page tables unmap a Page to a physical frame - this simply zeros the P1 page table entry for now
 	fn unmap<A>(&mut self, page: Page, allocator: &mut A) where A : FrameAllocator {
 		assert!(self.translate(page.start_address()).is_some());
@@ -238,5 +232,16 @@ pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A :
 				mapper.identity_map(frame, WRITABLE, allocator);
 			}
 		}
+
+		let vga_buffer_frame = Frame::containing_address(0xb8000);
+		mapper.identity_map(vga_buffer_frame, WRITABLE, allocator);
+
+		let multiboot_start = Frame::containing_address(boot_info.start_address());
+		let multiboot_end = Frame::containing_address(boot_info.end_address() - 1);
+		for frame in Frame::range_inclusive(multiboot_start, multiboot_end) {
+			mapper.identity_map(frame, PRESENT, allocator);
+		}
 	});
+	println!("Switching out active page table");
+	temp_table.make_active();
 }
