@@ -12,10 +12,14 @@ extern crate bitflags;
 #[macro_use]
 mod vga_buffer;
 mod memory;
+mod x86;
 use memory::FrameAllocator;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_address: usize) {
+	x86::enable_nxe_bit();
+	x86::enable_write_protect_bit();
+	
 	vga_buffer::clear_screen();
 	println!("Starting ParkOS");
 

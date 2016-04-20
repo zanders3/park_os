@@ -5,30 +5,9 @@ use memory::Frame;
 use memory::PAGE_SIZE;
 use memory::entry::*;
 use multiboot2::BootInformation;
+use x86::*;
 
 pub const ENTRY_COUNT: usize = 512;
-
-//Reads the CR3 register - causes a general protection fault if not in kernel mode
-unsafe fn cr3() -> u64 {
-	let ret: u64;
-	asm!("mov %cr3, $0" : "=r" (ret));
-	ret
-}
-
-//Writes the CR3 register - causes a general protection fault if not in kernel mode
-unsafe fn cr3_write(val : u64) {
-	asm!("mov $0, %cr3" :: "r" (val) : "memory");
-}
-
-//Invalidate a given address in the TLB using the invlpg CPU instruction
-unsafe fn flush_tlb(addr: usize) {
-	asm!("invlpg ($0)" :: "r" (addr) : "memory");
-}
-
-//Invalidates the TLB completely
-unsafe fn flush_tlb_all() {
-	cr3_write(cr3());
-}
 
 struct TempPageTableMapper<'a> {
 	table: &'a mut PageTable
@@ -78,8 +57,10 @@ impl TempPageTable {
 		unsafe { flush_tlb_all(); }
 	}
 
-	pub fn make_active(&mut self) {
+	pub fn make_active(&mut self) -> Frame {
+		let old_table = Frame::containing_address(unsafe { cr3() } as usize);
 		unsafe { cr3_write(self.frame.start_address() as u64); }
+		old_table
 	}
 }
 
@@ -218,24 +199,29 @@ pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A :
 		let elf_sections_tag = boot_info.elf_sections_tag().expect("Memory map tag required");
 
 		for section in elf_sections_tag.sections() {
-			use memory::entry::WRITABLE;
 			//section not loaded into memory - no need to map it!
 			if !section.is_allocated() {
 				continue;
 			}
-			assert!(section.addr % (PAGE_SIZE as u64) == 0, "sections need to be page aligned");
+			let flags = EntryFlags::from_elf_section_flags(section);
 
-			println!("Mapping section at addr: {:#x}, size: {:#x}", section.addr, section.size);
+			assert!(section.addr % (PAGE_SIZE as u64) == 0, "sections need to be page aligned");
+			println!("mapping section at addr: {:#x}, size: {:#x}",
+                     section.addr,
+                     section.size);
+
 			let start_frame = Frame::containing_address(section.start_address());
 			let end_frame = Frame::containing_address(section.end_address() - 1);
 			for frame in Frame::range_inclusive(start_frame, end_frame) {
-				mapper.identity_map(frame, WRITABLE, allocator);
+				mapper.identity_map(frame, flags, allocator);
 			}
 		}
 
+		//map vga buffer
 		let vga_buffer_frame = Frame::containing_address(0xb8000);
 		mapper.identity_map(vga_buffer_frame, WRITABLE, allocator);
 
+		//map multiboot buffer
 		let multiboot_start = Frame::containing_address(boot_info.start_address());
 		let multiboot_end = Frame::containing_address(boot_info.end_address() - 1);
 		for frame in Frame::range_inclusive(multiboot_start, multiboot_end) {
