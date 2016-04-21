@@ -40,7 +40,7 @@ $(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
 	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
 
 cargo:
-	cargo rustc --target $(target) -- -Z no-landing-pads
+	cargo rustc --target $(target) -- -Z no-landing-pads -C target-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2
 
 # compile assembly files
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm

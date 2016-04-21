@@ -14,11 +14,9 @@ impl Page {
 			"invalid address: 0x{:x}", address);
 		Page { number: address / PAGE_SIZE }
 	}
-
 	pub fn start_address(&self) -> usize {
 		self.number * PAGE_SIZE
 	}
-
 	pub fn p4_index(&self) -> usize {
 		(self.number >> 27) & 0o777 // bits 27-36 from 64 bits
 	}

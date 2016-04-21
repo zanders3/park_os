@@ -5,9 +5,9 @@ mod entry;
 mod pagetable;
 
 pub use self::area_frame_allocator::AreaFrameAllocator;
-pub use self::pagetable::test_paging;
-pub use self::pagetable::remap_kernel;
+use self::pagetable::remap_kernel;
 use self::page::PhysicalAddress;
+use multiboot2::BootInformation;
 
 pub const PAGE_SIZE: usize = 4096;
 
@@ -57,3 +57,21 @@ pub trait FrameAllocator {
 	fn allocate_frame(&mut self) -> Option<Frame>;
 	fn deallocate_frame(&mut self, frame: Frame);
 }
+
+pub fn init_memory(boot_info: &BootInformation, multiboot_information_address: usize) {
+	let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
+	let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
+
+	let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
+	let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
+	let multiboot_start = multiboot_information_address;
+	let multiboot_end = multiboot_start + (boot_info.total_size as usize);
+	println!("kernel_start: 0x{:x}, kernel_end: 0x{:x}\nmultiboot_start: 0x{:x}, multiboot_end: 0x{:x}",
+		kernel_start, kernel_end, multiboot_start, multiboot_end);
+
+	let mut frame_allocator = AreaFrameAllocator::new(
+		kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas()
+	);
+	remap_kernel(&mut frame_allocator, &boot_info);
+}
+

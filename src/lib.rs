@@ -13,7 +13,7 @@ extern crate bitflags;
 mod vga_buffer;
 mod memory;
 mod x86;
-use memory::FrameAllocator;
+mod io;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_address: usize) {
@@ -24,24 +24,11 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 	println!("Starting ParkOS");
 
 	let boot_info = unsafe { multiboot2::load(multiboot_information_address) };
-	let memory_map_tag = boot_info.memory_map_tag().expect("Memory map tag required");
-	let elf_sections_tag = boot_info.elf_sections_tag().expect("Elf-sections tag required");
+	memory::init_memory(boot_info, multiboot_information_address);
+	println!("Ready");
 
-	let kernel_start = elf_sections_tag.sections().map(|s| s.addr).min().unwrap();
-	let kernel_end = elf_sections_tag.sections().map(|s| s.addr + s.size).max().unwrap();
-	let multiboot_start = multiboot_information_address;
-	let multiboot_end = multiboot_start + (boot_info.total_size as usize);
-	println!("kernel_start: 0x{:x}, kernel_end: 0x{:x}\nmultiboot_start: 0x{:x}, multiboot_end: 0x{:x}",
-		kernel_start, kernel_end, multiboot_start, multiboot_end);
+	io::test();
 
-	let mut frame_allocator = memory::AreaFrameAllocator::new(
-		kernel_start as usize, kernel_end as usize, multiboot_start, multiboot_end, memory_map_tag.memory_areas()
-	);
-	memory::test_paging(&mut frame_allocator);
-	memory::remap_kernel(&mut frame_allocator, boot_info);
-	println!("Successful");
-	frame_allocator.allocate_frame();
-	println!("Done");
 	loop {}
 }
 

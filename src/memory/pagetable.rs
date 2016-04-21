@@ -28,7 +28,6 @@ struct TempPageTable {
 impl TempPageTable {
 	pub fn new_page_table<A>(page: Page, active_table: &mut PageTable, allocator: &mut A) -> TempPageTable where A : FrameAllocator {
 		let frame = allocator.allocate_frame().expect("no more frames");
-		println!("Allocating new page {:?} using {:?}", page, frame);
 		active_table.map_to(page, frame.clone(), WRITABLE, allocator);
 		let table = unsafe { &mut *(page.start_address() as *mut Table<Level4>) };
 		table.zero();
@@ -164,7 +163,7 @@ impl PageTable {
 	}
 }
 
-pub fn test_paging<A>(allocator : &mut A) where A : FrameAllocator {
+/*pub fn test_paging<A>(allocator : &mut A) where A : FrameAllocator {
 	let mut page_table = unsafe { PageTable::new_active() };
 	println!("Some = {:?}", page_table.translate(0));
 	println!("Some = {:?}", page_table.translate(4096));
@@ -189,7 +188,7 @@ pub fn test_paging<A>(allocator : &mut A) where A : FrameAllocator {
 
 	page_table.unmap(Page::containing_address(addr), allocator);
 	println!("None = {:?}", page_table.translate(addr));
-}
+}*/
 
 pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A : FrameAllocator {
 	let mut active_table = unsafe { PageTable::new_active() };
@@ -206,9 +205,9 @@ pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A :
 			let flags = EntryFlags::from_elf_section_flags(section);
 
 			assert!(section.addr % (PAGE_SIZE as u64) == 0, "sections need to be page aligned");
-			println!("mapping section at addr: {:#x}, size: {:#x}",
+			/*println!("mapping section at addr: {:#x}, size: {:#x}",
                      section.addr,
-                     section.size);
+                     section.size);*/
 
 			let start_frame = Frame::containing_address(section.start_address());
 			let end_frame = Frame::containing_address(section.end_address() - 1);
@@ -228,6 +227,5 @@ pub fn remap_kernel<A>(allocator: &mut A, boot_info: &BootInformation) where A :
 			mapper.identity_map(frame, PRESENT, allocator);
 		}
 	});
-	println!("Switching out active page table");
 	temp_table.make_active();
 }
