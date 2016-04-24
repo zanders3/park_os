@@ -9,12 +9,12 @@ bits 64
 ; Define IDT code for 255 interrupt handlers - putting interrupt code into .int_code
 interrupts:
 .first:
-	mov [.int_code], byte 0
+	push word 0
 	jmp qword .handle
 .second:
 %assign i 1
 %rep 255
-	mov [.int_code], byte i
+	push word i
 	jmp qword .handle
 %assign i i+1
 %endrep
@@ -39,7 +39,7 @@ interrupts:
 	mov rsi, rsp ; Save stack pointer
 	push rsi
 
-	mov rdi, qword [.int_code] ; Push int_code
+	mov edi, [rsp - ((8*16)+2)]
 
 	extern fault_handler
 	call fault_handler ; Call rust fault handler
@@ -61,11 +61,9 @@ interrupts:
 	pop r14
 	pop r15
 	pop rbp
+	add rsp, 2 ; pop error code byte
 
 	iretq
-
-; Function pointer to rust interrupt handler (set in io::init_io)
-.handler: dq 0
 
 ; IDTR definition
 idtr:

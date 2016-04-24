@@ -34,8 +34,9 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 }
 
 #[no_mangle]
-pub extern fn fault_handler() {
+pub extern fn fault_handler(code:u32) {
 	println!("ISR CALLED!");
+	println!(" with {}", code);
 	loop {}
 }
 
