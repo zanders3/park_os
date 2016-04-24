@@ -27,8 +27,15 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 	memory::init_memory(boot_info, multiboot_information_address);
 	println!("Ready");
 
-	io::test();
+	io::init_io();
 
+	println!("Input!");
+	loop {}
+}
+
+#[no_mangle]
+pub extern fn fault_handler() {
+	println!("ISR CALLED!");
 	loop {}
 }
 

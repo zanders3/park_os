@@ -1,5 +1,7 @@
 global start
 extern long_mode_start
+extern idtr
+global gdt64.code
 
 section .text
 bits 32
@@ -26,6 +28,9 @@ start:
 
 	; load the 64-bit global descriptor table
 	lgdt [gdt64.pointer]
+
+	; load the 64-bit interrupt descriptor table
+	lidt [idtr]
 
 	; update selectors
 	mov ax, gdt64.data
@@ -124,7 +129,7 @@ set_up_page_tables:
 	; map each P2 entry to 2MB page
 	mov ecx, 0 ; counter
 
-.map_p2_table:
+	.map_p2_table:
 	; map each P2 entry to 2MiB * ecx memory location
 	mov eax, 0x200000 ; 2MiB
 	mul ecx,

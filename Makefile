@@ -24,6 +24,9 @@ run: $(iso)
 debug: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso) -s -S
 
+debug_int:
+	@qemu-system-x86_64 -d int -no-reboot -cdrom build/os-x86_64.iso
+
 gdb:
 	@tools/rust-gdb -tui "build/kernel-x86_64.bin" -ex "target remote :1234"
 
