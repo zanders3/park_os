@@ -3,15 +3,18 @@ ENTRY(start)
 SECTIONS {
     . = 1M;
 
-    .rodata : {
+    .rodata : 
+    {
         /* ensure that the multiboot header is at the beginning */
         KEEP(*(.multiboot_header))
         *(.rodata .rodata.*)
         . = ALIGN(4K);
     }
 
-    .text :
+    _text_start = 0x104000;
+    .text _text_start :
     {
+        KEEP(*(.interrupts))
         *(.text .text.*)
         . = ALIGN(4K);
     }

@@ -3,18 +3,18 @@ global setup_idt
 
 extern gdt64.code
 
-section .text
+section .interrupts
 bits 64
 
 ; Define IDT code for 255 interrupt handlers - putting interrupt code into .int_code
 interrupts:
 .first:
-	push word 0
+	push qword 0
 	jmp qword .handle
 .second:
 %assign i 1
 %rep 255
-	push word i
+	push qword i
 	jmp qword .handle
 %assign i i+1
 %endrep
@@ -36,10 +36,9 @@ interrupts:
 	push rbx
 	push rax
 
-	mov rsi, rsp ; Save stack pointer
-	push rsi
-
-	mov edi, [rsp - ((8*16)+2)]
+	mov rdi, rsp ; Save stack pointer
+	push rdi
+	mov rdi, rsp
 
 	extern fault_handler
 	call fault_handler ; Call rust fault handler
@@ -61,8 +60,7 @@ interrupts:
 	pop r14
 	pop r15
 	pop rbp
-	add rsp, 2 ; pop error code byte
-
+	add rsp, 8 ; pop error code qword
 	iretq
 
 ; IDTR definition
@@ -70,8 +68,11 @@ idtr:
 	dw (idt.end - idt) + 1 ; idt limit - maximum addressable size in table
 	dq idt ; pointer to idt
 
-%define BASE_OF_SECTION 0x101160 ;terrifying HACKX - if interrupts go horribly wrong its going to be this base address!
+%define BASE_OF_SECTION 0x104000 ;IF INTERRUPTS EXPLODE - it is because the linker has relocated the interrupts!
 %define SIZE_OF_INTCODE (interrupts.second-interrupts.first)
+
+sectionbase:
+	dq BASE_OF_SECTION
 
 ; IDT definition starts here
 idt:
