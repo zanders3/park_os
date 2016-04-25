@@ -1,7 +1,7 @@
 arch ?= x86_64
 kernel := build/kernel-$(arch).bin
 iso := build/os-$(arch).iso
-target ?= $(arch)-unknown-linux-gnu
+target ?= $(arch)-unknown-none-gnu
 rust_os := target/$(target)/debug/libpark_os.a
 
 linker_script := src/arch/$(arch)/linker.ld
@@ -10,7 +10,7 @@ assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
 assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
     build/arch/$(arch)/%.o, $(assembly_source_files))
 
-.PHONY: all clean run iso gdb
+.PHONY: all clean run iso gdb initial-setup
 
 all: $(kernel)
 
@@ -48,3 +48,10 @@ cargo:
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
 	@mkdir -p $(shell dirname $@)
 	@nasm -felf64 $< -o $@
+
+libcore:
+	git submodule update
+	cp $(target).json nightly-libcore/
+	cd nightly-libcore && cargo build --release --features disable_float --target $(target)
+	mkdir -p ~/.multirust/toolchains/nightly/lib/rustlib/$(target)/lib
+	cp nightly-libcore/target/$(target)/release/libcore.rlib ~/.multirust/toolchains/nightly/lib/rustlib/$(target)/lib
