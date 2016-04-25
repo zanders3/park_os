@@ -1,15 +1,14 @@
 mod port;
 mod pic;
 
-use spin::Mutex;
-use io::pic::ChainedPics;
+pub use io::pic::Pics;
 
-static PICS: Mutex<ChainedPics> = Mutex::new(unsafe { ChainedPics::new(0x20, 0x28) });
+pub static mut PICS: Pics = unsafe { Pics::new() };
 
 pub fn init_io() {
 	println!("Here we go...");
 	unsafe {
-		PICS.lock().init();
+		PICS.init();
 	}
 	println!("Enabling interrupts...");
 	unsafe {

@@ -61,57 +61,56 @@ pub struct Regs {
 
 #[no_mangle]
 pub extern fn fault_handler(regs: &Regs) {
-	macro_rules! printregs {
-		($name:expr) => ({
-			println!("  INT {:X}: {}", regs.interrupt, $name);
-            println!("    CS:  {:08X}    IP:  {:08X}    FLG: {:08X}", regs.cs, regs.ip, regs.flags);
-            println!("    SP:  {:08X}    BP:  {:08X}", regs.sp, regs.bp);
-            println!("    AX:  {:08X}    BX:  {:08X}    CX:  {:08X}    DX:  {:08X}", regs.ax, regs.bx, regs.cx, regs.dx);
-            println!("Extra stuff {:08X}", regs.sp);
-            println!("    DI:  {:08X}    SI:  {:08X}", regs.di, regs.di);
-		})
-	}
-	macro_rules! crashregs {
-	    ($name:expr) => ({
-	    	printregs!($name);
-	    	loop { unsafe { asm!("hlt"); } }
-	    })
-	}
+	let printregs = |name| {
+		println!("  INT {:X}: {}", regs.interrupt, name);
+        println!("    CS:  {:08X}    IP:  {:08X}    FLG: {:08X}", regs.cs, regs.ip, regs.flags);
+        println!("    SP:  {:08X}    BP:  {:08X}", regs.sp, regs.bp);
+        println!("    AX:  {:08X}    BX:  {:08X}    CX:  {:08X}    DX:  {:08X}", regs.ax, regs.bx, regs.cx, regs.dx);
+        println!("    DI:  {:08X}    SI:  {:08X}", regs.di, regs.di);
+        println!("HALT");
+        loop { unsafe { asm!("hlt"); } }
+	};
 
 	match regs.interrupt {
-		0x0 => crashregs!("Divide by zero exception"),
-        0x1 => crashregs!("Debug exception"),
-        0x2 => crashregs!("Non-maskable interrupt"),
-        0x3 => crashregs!("Breakpoint exception"),
-        0x4 => crashregs!("Overflow exception"),
-        0x5 => crashregs!("Bound range exceeded exception"),
-        0x6 => crashregs!("Invalid opcode exception"),
-        0x7 => crashregs!("Device not available exception"),
-        0x8 => crashregs!("Double fault"),
-        0x9 => crashregs!("Coprocessor Segment Overrun"), // legacy
-        0xA => crashregs!("Invalid TSS exception"),
-        0xB => crashregs!("Segment not present exception"),
-        0xC => crashregs!("Stack-segment fault"),
-        0xD => crashregs!("General protection fault"),
-        0xE => crashregs!("Page fault"),
-        0x10 => crashregs!("x87 floating-point exception"),
-        0x11 => crashregs!("Alignment check exception"),
-        0x12 => crashregs!("Machine check exception"),
-        0x13 => crashregs!("SIMD floating-point exception"),
-        0x14 => crashregs!("Virtualization exception"),
-        0x1E => crashregs!("Security exception"),
-        _ => printregs!("Unknown interrupt")
+		0x0 => printregs("Divide by zero exception"),
+        0x1 => printregs("Debug exception"),
+        0x2 => printregs("Non-maskable interrupt"),
+        0x3 => printregs("Breakpoint exception"),
+        0x4 => printregs("Overflow exception"),
+        0x5 => printregs("Bound range exceeded exception"),
+        0x6 => printregs("Invalid opcode exception"),
+        0x7 => printregs("Device not available exception"),
+        0x8 => printregs("Double fault"),
+        0x9 => printregs("Coprocessor Segment Overrun"), // legacy
+        0xA => printregs("Invalid TSS exception"),
+        0xB => printregs("Segment not present exception"),
+        0xC => printregs("Stack-segment fault"),
+        0xD => printregs("General protection fault"),
+        0xE => printregs("Page fault"),
+        0x10 => printregs("x87 floating-point exception"),
+        0x11 => printregs("Alignment check exception"),
+        0x12 => printregs("Machine check exception"),
+        0x13 => printregs("SIMD floating-point exception"),
+        0x14 => printregs("Virtualization exception"),
+        0x1E => printregs("Security exception"),
+        0x20 => {
+            //Clock interrupt which we can ignore for now
+        },
+        _ => printregs("Unknown interrupt"),
 	}
-	println!("Returning now");
+
+    if regs.interrupt >= 0x20 && regs.interrupt < 0x30 {
+        if regs.interrupt >= 0x28 {
+            unsafe { io::PICS.slave.command.write(0x20); }
+        }
+        unsafe { io::PICS.master.command.write(0x20); }
+    }
 }
 
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] extern fn panic_fmt(fmt: core::fmt::Arguments, file: &str, line: u32) -> ! {
 	println!("\n\nPANIC in {} at line {}:", file, line);
 	println!("	{}", fmt);
-	loop{
-		unsafe {
-			asm!("hlt");
-		}
-	}
+    println!("HALT");
+    loop { unsafe { asm!("hlt"); } }
 }
