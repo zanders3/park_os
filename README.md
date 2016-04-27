@@ -11,5 +11,6 @@ curl -sf https://raw.githubusercontent.com/brson/multirust/master/blastoff.sh | 
 git clone https://github.com/zanders3/park_os
 cd park_os
 multirust override nightly
+make libcore
 make run
 ```
