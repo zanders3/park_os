@@ -15,6 +15,8 @@ mod memory;
 mod x86;
 mod io;
 
+use io::port::{Port, Io};
+
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_address: usize) {
 	x86::enable_nxe_bit();
@@ -93,9 +95,8 @@ pub extern fn fault_handler(regs: &Regs) {
         0x13 => printregs("SIMD floating-point exception"),
         0x14 => printregs("Virtualization exception"),
         0x1E => printregs("Security exception"),
-        0x20 => {
-            //Clock interrupt which we can ignore for now
-        },
+        0x20 => io::handle_timer_interrupt(),
+        0x21 => io::handle_keyboard_interrupt(),
         _ => printregs("Unknown interrupt"),
 	}
 

@@ -1,4 +1,4 @@
-use io::port::Port;
+use io::port::{Io, Port};
 
 //Programmable interrupt controller
 // http://wiki.osdev.org/8259_PIC
