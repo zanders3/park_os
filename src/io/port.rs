@@ -29,6 +29,42 @@ impl Io<u8> for Port<u8> {
     }
 }
 
+impl Io<u16> for Port<u16> {
+    /// Read
+    fn read(&self) -> u16 {
+        let value: u16;
+        unsafe {
+            asm!("in $0, $1" : "={ax}"(value) : "{dx}"(self.port) : "memory" : "intel", "volatile");
+        }
+        value
+    }
+
+    /// Write
+    fn write(&mut self, value: u16) {
+        unsafe {
+            asm!("out $1, $0" : : "{ax}"(value), "{dx}"(self.port) : "memory" : "intel", "volatile");
+        }
+    }
+}
+
+impl Io<u32> for Port<u32> {
+    /// Read
+    fn read(&self) -> u32 {
+        let value: u32;
+        unsafe {
+            asm!("in $0, $1" : "={eax}"(value) : "{dx}"(self.port) : "memory" : "intel", "volatile");
+        }
+        value
+    }
+
+    /// Write
+    fn write(&mut self, value: u32) {
+        unsafe {
+            asm!("out $1, $0" : : "{eax}"(value), "{dx}"(self.port) : "memory" : "intel", "volatile");
+        }
+    }
+}
+
 impl<T> Port<T> {
 	pub const unsafe fn new(port: u16) -> Port<T> {
 		Port {

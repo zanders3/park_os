@@ -93,7 +93,7 @@ pub extern fn fault_handler(regs: &Regs) {
         0x14 => printregs("Virtualization exception"),
         0x1E => printregs("Security exception"),
         0x20 => io::handle_timer_interrupt(),
-        0x21 => unsafe {
+        0x21 => unsafe {//keyboard interrupt
             let key_event = io::KEYBOARD.handle_keyboard_interrupt();
             if key_event.pressed && key_event.character != '\0' {
                 vga_buffer::WRITER.lock().write_byte(key_event.character as u8);
@@ -102,6 +102,7 @@ pub extern fn fault_handler(regs: &Regs) {
         _ => printregs("Unknown interrupt"),
 	}
 
+    //Acknowledge interrupts from master and slave PIC
     if regs.interrupt >= 0x20 && regs.interrupt < 0x30 {
         if regs.interrupt >= 0x28 {
             unsafe { io::PICS.slave.command.write(0x20); }
