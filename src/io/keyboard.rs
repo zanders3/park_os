@@ -1,42 +1,123 @@
 
 use io::port::{Io, Port};
 
-/*struct PS2Controller {
-	data: Port<u8>,
-	status: Port<u8>,
-	command: Port<u8>
+#[derive(Debug)]
+pub struct KeyEvent {
+	character: char,
+	pressed: bool,
+	scancode: u8
 }
 
-impl PS2Controller {
-	pub fn new() -> PS2Controller {
-		data: Port::new(0x60),
-		command: Port::new(0x64)
-	}
+static SCANCODES: [[char; 2]; 58] = [
+	['\0', '\0'],
+	['\x1B', '\x1B'],
+	['1', '!'],
+	['2', '@'],
+	['3', '£'],
+	['4', '$'],
+	['5', '%'],
+	['6', '^'],
+	['7', '&'],
+	['8', '*'],
+	['9', '('],
+	['0', ')'],
+	['-', '_'],
+	['=', '+'],
+	['\x10', '\x10'],
+	['\x11', '\x11'],
+	['q', 'Q'],
+	['w', 'W'],
+	['e', 'E'],
+	['r', 'R'],
+	['t', 'T'],
+	['y', 'Y'],
+	['u', 'U'],
+	['i', 'I'],
+	['o', 'O'],
+	['p', 'P'],
+	['[', '{'],
+	[']', '}'],
+	['\x15', '\x15'],
+	['\0', '\0'],
+	['a', 'A'],
+	['s', 'S'],
+	['d', 'D'],
+	['f', 'F'],
+	['g', 'G'],
+	['h', 'H'],
+	['j', 'J'],
+	['k', 'K'],
+	['l', 'L'],
+	[';', ':'],
+	['\'', '"'],
+	['`', '~'],
+	['\0', '\0'],
+	['\\', '|'],
+	['z', 'Z'],
+	['x', 'X'],
+	['c', 'C'],
+	['v', 'V'],
+	['b', 'B'],
+	['n', 'N'],
+	['m', 'M'],
+	[',', '<'],
+	['.', '>'],
+	['/', '?'],
+	['\0', '\0'],
+	['*', '*'],
+	['\0', '\0'],
+	[' ', ' ']
+];
 
-	pub fn write_command(val:u8) {
-		self.command.write(val);
-	}
-
-	pub fn read_status() -> u8 {
-		self.command.read()
-	}
-
-	pub fn write_data(val:u8) {
-		self.data.write(val);
-	}
-
-	pub fn read_data() -> u8 {
-		self.data.read()
-	}
+pub struct Keyboard {
+	shift: bool,
+	capslock: bool
 }
 
-static mut PS2: PS2Controller = unsafe { PS2Controller::new() };*/
+impl Keyboard {
+	pub const fn new() -> Keyboard {
+		Keyboard {
+			shift: false,
+			capslock: false
+		}
+	}
 
-pub fn handle_keyboard_interrupt() {
-	let mut scancode:u8 = unsafe { Port::new(0x60).read() };
-	println!("pressed {}", scancode);	
-}
+	pub fn init_keyboard(&self) {
+		unsafe {
+			while (Port::new(0x64).read() & 0x1) == 1 {
+				println!("empty keyboard!");
+				Port::new(0x60).read();
+			}
+		}
+	}
 
-pub fn init_keyboard() {
-	//Do nothing?
+	fn parse_scancode(&mut self, scancode:u8) -> KeyEvent {
+		let scancode_idx = scancode & 0x7F;
+
+		match scancode {
+			0x2A | 0x36 => { self.shift = true; },
+			0xAA | 0xB6 => { self.shift = false; },
+			0x3A => { self.capslock = !self.capslock; }
+			_ => {}
+		}
+
+		let character = if scancode_idx < 58 {
+			let shiftIdx = if self.capslock || self.shift { 1 } else { 0 };
+			SCANCODES[scancode_idx as usize][shiftIdx]
+		} else {
+			'\0'
+		};
+
+		KeyEvent {
+			character: character,
+			pressed: scancode < 0x7F,
+			scancode: scancode
+		}
+	}
+
+	pub fn handle_keyboard_interrupt(&mut self) {
+		let scancode:u8 = unsafe { Port::new(0x60).read() };
+		let info = self.parse_scancode(scancode);
+		println!("pressed {} => {:?} {:?}", scancode, info.character, info.pressed);	
+	}
 }

@@ -31,6 +31,7 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 
 	io::init_io();
 
+
 	println!("Ready2");
 	loop {}
 }
@@ -96,7 +97,7 @@ pub extern fn fault_handler(regs: &Regs) {
         0x14 => printregs("Virtualization exception"),
         0x1E => printregs("Security exception"),
         0x20 => io::handle_timer_interrupt(),
-        0x21 => io::handle_keyboard_interrupt(),
+        0x21 => unsafe { io::KEYBOARD.handle_keyboard_interrupt() },
         _ => printregs("Unknown interrupt"),
 	}
 

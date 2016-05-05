@@ -3,7 +3,7 @@ use io::port::{Io, Port};
 
 pub fn init_timer()
 {
-	/*let hz = 100;
+	/*let hz = 10;
 	let divisor : u32 = 1193180 / hz;
 	unsafe {
 		let mut command_port : Port<u8> = Port::new(0x43);

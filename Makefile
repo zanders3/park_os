@@ -18,7 +18,7 @@ clean:
 	@rm -r build
 
 run: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso) -s
+	@qemu-system-x86_64 -cdrom $(iso) -s -k en-gb
 
 debug: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso) -s -S
