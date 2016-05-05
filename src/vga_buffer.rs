@@ -55,6 +55,13 @@ impl Writer {
 		match byte {
 			b'\n' => self.new_line(),
 			b'\t' => for _ in 0..4 { self.write_byte(b' ') },
+			b'\x10' => {
+				if self.column_position > 0 {
+					self.column_position -= 1;
+					self.write_byte(b' ');
+					self.column_position -= 1;
+				}
+			},
 			byte => {
 				if self.column_position >= BUFFER_WIDTH {
 					self.new_line()

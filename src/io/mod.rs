@@ -9,18 +9,16 @@ pub use io::keyboard::{Keyboard, KeyEvent};
 pub use io::timer::handle_timer_interrupt;
 
 pub static mut PICS: Pics = unsafe { Pics::new() };
-pub static mut KEYBOARD: Keyboard = unsafe { Keyboard::new() };
+pub static mut KEYBOARD: Keyboard = Keyboard::new();
 
 pub fn init_io() {
 	unsafe {
 		PICS.init();
 	}
-	println!("Init timer");
 	self::timer::init_timer();
-	println!("Enabling interrupts...");
+	//Enable interrupts
 	unsafe {
 		asm!("sti");
 	}
-	println!("Init keyboard");
 	unsafe { KEYBOARD.init_keyboard() };
 }

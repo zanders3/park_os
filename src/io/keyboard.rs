@@ -3,9 +3,9 @@ use io::port::{Io, Port};
 
 #[derive(Debug)]
 pub struct KeyEvent {
-	character: char,
-	pressed: bool,
-	scancode: u8
+	pub character: char,
+	pub pressed: bool,
+	pub scancode: u8
 }
 
 static SCANCODES: [[char; 2]; 58] = [
@@ -37,7 +37,7 @@ static SCANCODES: [[char; 2]; 58] = [
 	['p', 'P'],
 	['[', '{'],
 	[']', '}'],
-	['\x15', '\x15'],
+	['\n', '\n'],
 	['\0', '\0'],
 	['a', 'A'],
 	['s', 'S'],
@@ -102,8 +102,8 @@ impl Keyboard {
 		}
 
 		let character = if scancode_idx < 58 {
-			let shiftIdx = if self.capslock || self.shift { 1 } else { 0 };
-			SCANCODES[scancode_idx as usize][shiftIdx]
+			let shift_idx = if self.capslock ^ self.shift { 1 } else { 0 };
+			SCANCODES[scancode_idx as usize][shift_idx]
 		} else {
 			'\0'
 		};
@@ -115,9 +115,8 @@ impl Keyboard {
 		}
 	}
 
-	pub fn handle_keyboard_interrupt(&mut self) {
+	pub fn handle_keyboard_interrupt(&mut self) -> KeyEvent {
 		let scancode:u8 = unsafe { Port::new(0x60).read() };
-		let info = self.parse_scancode(scancode);
-		println!("pressed {} => {:?} {:?}", scancode, info.character, info.pressed);	
+		self.parse_scancode(scancode)	
 	}
 }

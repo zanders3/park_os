@@ -1,5 +1,5 @@
 
-use io::port::{Io, Port};
+//use io::port::{Io, Port};
 
 pub fn init_timer()
 {
@@ -21,7 +21,7 @@ pub fn handle_timer_interrupt()
 	unsafe { 
 		timer_ticks = timer_ticks + 1;
 		if timer_ticks % 18 == 0 {
-			println!("Tick");
+			//println!("Tick");
 		}
 	}
 }

@@ -15,7 +15,7 @@ mod memory;
 mod x86;
 mod io;
 
-use io::port::{Port, Io};
+use io::port::Io;
 
 #[no_mangle]
 pub extern fn rust_main(multiboot_information_address: usize) {
@@ -27,12 +27,9 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 
 	let boot_info = unsafe { multiboot2::load(multiboot_information_address) };
 	memory::init_memory(boot_info, multiboot_information_address);
-	println!("Ready");
-
 	io::init_io();
+    println!("Ready");
 
-
-	println!("Ready2");
 	loop {}
 }
 
@@ -58,8 +55,7 @@ pub struct Regs {
     pub interrupt: usize,
     pub ip: usize,
     pub cs: usize,
-    pub flags: usize,
-    //pub ss: usize,
+    pub flags: usize
 }
 
 #[no_mangle]
@@ -97,7 +93,12 @@ pub extern fn fault_handler(regs: &Regs) {
         0x14 => printregs("Virtualization exception"),
         0x1E => printregs("Security exception"),
         0x20 => io::handle_timer_interrupt(),
-        0x21 => unsafe { io::KEYBOARD.handle_keyboard_interrupt() },
+        0x21 => unsafe {
+            let key_event = io::KEYBOARD.handle_keyboard_interrupt();
+            if key_event.pressed && key_event.character != '\0' {
+                vga_buffer::WRITER.lock().write_byte(key_event.character as u8);
+            }
+        },
         _ => printregs("Unknown interrupt"),
 	}
 
