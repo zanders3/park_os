@@ -1,6 +1,13 @@
 use io::port::{Io, Port};
 use io::pci::PciConfig;
 
+#[derive(Copy,Clone,Debug)]
+enum DiskType {
+	Unknown,
+	ATA,
+	ATAPI
+}
+
 #[derive(Copy,Clone)]
 struct IdeDisk {
 	bus_command:Port<u8>,
@@ -15,6 +22,7 @@ struct IdeDisk {
 	status:Port<u8>,
 	command:Port<u8>,
 	alt_status:Port<u8>,
+	disk_type:DiskType,
 	master:bool
 }
 
@@ -41,6 +49,7 @@ impl Ide {
 				status:Port::empty(),
 				command:Port::empty(),
 				alt_status:Port::empty(),
+				disk_type:DiskType::Unknown,
 				master:false
 			}; 4],
 			num_disks: 0
@@ -67,7 +76,7 @@ impl Ide {
 		let bar4 : u16 = (pci.read(0x20) & 0xFFF0) as u16;
 
 		let mut num_disks = 0;
-		println!("- IDE {:X} {:X} {:X} {:X} {:X}", bar0, bar1, bar2, bar3, bar4);
+		//println!("- IDE {:X} {:X} {:X} {:X} {:X}", bar0, bar1, bar2, bar3, bar4);
 		{
 			let busmaster = bar4;
 			let data = bar0;
@@ -129,11 +138,13 @@ impl IdeDisk {
 				status:Port::new(base + 7),
 				command:Port::new(base + 7),
 				alt_status:Port::new(ctrl + 2),
+				disk_type:DiskType::Unknown,
 				master:master
 			};
 			if disk.identify() {
 				Some(disk)
 			} else {
+				println!("\t\tNot Connected");
 				None
 			}
 		}
@@ -167,27 +178,21 @@ impl IdeDisk {
 		self.command.write(cmd);
 	}
 
-	fn ide_poll(&mut self, check_error:bool) -> u8 {
-		
-
-		if check_error {
-			let state = self.alt_status.read();
-			println!("State2: {:X}", state);
-			if state & ATA_SR_ERR == ATA_SR_ERR {
-				return 2;
-			}
-			if state & ATA_SR_DF != 0 {
-				return 1;
-			}
-			if state & ATA_SR_DRQ == 0 {
-				return 3;
-			}
+	fn print_range(min:usize,max:usize,data:&[u16]) {
+		for i in min..max {
+			let d = data[i];
+            let a = ((d >> 8) as u8) as char;
+            if a != ' ' && a != '\0' {
+                print!("{}", a);
+            }
+            let b = (d as u8) as char;
+            if b != ' ' && b != '\0' {
+                print!("{}", b);
+            }
 		}
-		0
 	}
 
 	fn identify(&mut self) -> bool {
-		println!("\tIdentify");
 		if self.alt_status.read() == 0xFF {
 			println!("\tFloating bus");
 			return false;
@@ -210,35 +215,40 @@ impl IdeDisk {
 		//Check for errors
 		{
 			let status = self.alt_status.read();
-			println!("\tStatus: {:X}", status);
+			//println!("\tStatus: {:X}", status);
 			if (status & ATA_SR_ERR) == ATA_SR_ERR {
 				//Error flag might mean we have an ATAPI device (cdrom)
 				let cl = self.sector1.read();
 				let ch = self.sector2.read();
 				if (cl == 0x14 && ch == 0xEB) || (cl == 0x69 && ch == 0x96) {
-					println!("\tType: ATAPI");
+					self.disk_type = DiskType::ATAPI;
 				} else {
+					//Not an ATAPI device!
 					return false;
 				}
+				//Ask the ATAPI to identify itself
 				self.ata_write(ATA_CMD_IDENTIFY_PACKET, 0, 0);
 			} else if (status & ATA_SR_DRQ) != ATA_SR_DRQ {
 				println!("\tData request not ready?");
 				return false;
+			} else {
+				self.disk_type = DiskType::ATA;
 			}
 		}
 
-		//Read description
-		for word in 0..256 {
-			let d = self.data.read();
-			let a = ((d >> 8) as u8) as char;
-			//if a != ' ' && a != '\0' {
-				print!("{}", a);
-			//}
-			let b = (a as u8) as char;
-			//if b != ' ' && b != '\0' {
-				print!("{}", b);
-			//}
+		//Read in the identity data
+		let mut data : [u16;256] = [0;256];
+		for i in 0..256 {
+			data[i] = self.data.read();
 		}
+
+		//Print out disk info
+		print!("\t\tType: {:?} Serial: ", self.disk_type);
+		IdeDisk::print_range(10, 20, &data);
+		print!(" Firmware: ");
+		IdeDisk::print_range(23, 27, &data);
+		print!(" Model: ");
+		IdeDisk::print_range(27, 47, &data);
 		println!("");
 
 		true

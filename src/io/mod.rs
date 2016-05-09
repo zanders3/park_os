@@ -20,7 +20,6 @@ pub fn init_io() {
 		//Enable interrupts
 		asm!("sti");
 		KEYBOARD.init_keyboard();
-		println!("init pci?");
 		self::pci::init_pci();
 	}
 }
