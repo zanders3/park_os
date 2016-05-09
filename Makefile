@@ -18,7 +18,7 @@ clean:
 	@rm -r build
 
 run: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso) -s -k en-gb
+	@qemu-system-x86_64 -cdrom $(iso) -hda fat:./disk -boot order=d -s -k en-gb
 
 debug: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso) -s -S

@@ -23,6 +23,7 @@ struct IdeDisk {
 	command:Port<u8>,
 	alt_status:Port<u8>,
 	disk_type:DiskType,
+	num_sectors:u64,
 	master:bool
 }
 
@@ -50,6 +51,7 @@ impl Ide {
 				command:Port::empty(),
 				alt_status:Port::empty(),
 				disk_type:DiskType::Unknown,
+				num_sectors:0,
 				master:false
 			}; 4],
 			num_disks: 0
@@ -70,7 +72,7 @@ impl Ide {
 
 		//Read the base pointers or use defaults if unspecified (http://wiki.osdev.org/IDE#Detecting_a_PCI_IDE_Controller)
 		let bar0 : u16 = select_port(pci.read(0x10), 0x1F0);
-		let bar1 : u16 = select_port(pci.read(0x14), 0x3F6);
+		let bar1 : u16 = select_port(pci.read(0x14), 0x3F4);
 		let bar2 : u16 = select_port(pci.read(0x18), 0x170);
 		let bar3 : u16 = select_port(pci.read(0x1C), 0x374);
 		let bar4 : u16 = (pci.read(0x20) & 0xFFF0) as u16;
@@ -139,6 +141,7 @@ impl IdeDisk {
 				command:Port::new(base + 7),
 				alt_status:Port::new(ctrl + 2),
 				disk_type:DiskType::Unknown,
+				num_sectors:0,
 				master:master
 			};
 			if disk.identify() {
@@ -215,7 +218,7 @@ impl IdeDisk {
 		//Check for errors
 		{
 			let status = self.alt_status.read();
-			//println!("\tStatus: {:X}", status);
+			//println!("\t\tStatus: {:X}", status);
 			if (status & ATA_SR_ERR) == ATA_SR_ERR {
 				//Error flag might mean we have an ATAPI device (cdrom)
 				let cl = self.sector1.read();
@@ -250,6 +253,13 @@ impl IdeDisk {
 		print!(" Model: ");
 		IdeDisk::print_range(27, 47, &data);
 		println!("");
+
+		self.num_sectors = 
+			(data[100] as u64) | 
+			((data[101] as u64) << 16) |
+			((data[102] as u64) << 32) |
+			((data[103] as u64) << 48);
+		println!("\t\tSize: {} MB", (self.num_sectors / 2048) as usize);
 
 		true
 	}
