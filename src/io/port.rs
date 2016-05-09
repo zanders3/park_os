@@ -6,6 +6,7 @@ pub trait Io<T> {
     fn write(&mut self, value: T);
 }
 
+#[derive(Copy,Clone)]
 pub struct Port<T> {
 	port: u16,
 	phantom: PhantomData<T>
@@ -72,4 +73,5 @@ impl<T> Port<T> {
 			phantom: PhantomData
 		}
 	}
+    pub const fn empty() -> Port<T> { Port{ port:0,phantom:PhantomData } }
 }

@@ -99,7 +99,7 @@ pub extern fn fault_handler(regs: &Regs) {
                 vga_buffer::WRITER.lock().write_byte(key_event.character as u8);
             }
         },
-        _ => printregs("Unknown interrupt"),
+        _ => println!("Unknown interrupt: {:X}", regs.interrupt),
 	}
 
     //Acknowledge interrupts from master and slave PIC

@@ -84,8 +84,8 @@ impl Keyboard {
 
 	pub fn init_keyboard(&self) {
 		unsafe {
-			let mut keyb_port : Port<u8> = Port::new(0x64);
-			let mut data_port : Port<u8> = Port::new(0x60);
+			let keyb_port : Port<u8> = Port::new(0x64);
+			let data_port : Port<u8> = Port::new(0x60);
 			while (keyb_port.read() & 0x1) == 1 {
 				println!("empty keyboard!");
 				data_port.read();
