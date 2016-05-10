@@ -8,6 +8,13 @@ enum DiskType {
 	ATAPI
 }
 
+#[derive(Copy,Clone,Debug)]
+enum AccessType {
+	Unknown,
+	LBA28,
+	LBA48
+}
+
 #[derive(Copy,Clone)]
 struct IdeDisk {
 	bus_command:Port<u8>,
@@ -23,6 +30,7 @@ struct IdeDisk {
 	command:Port<u8>,
 	alt_status:Port<u8>,
 	disk_type:DiskType,
+	access_type:AccessType,
 	num_sectors:u64,
 	master:bool
 }
@@ -51,6 +59,7 @@ impl Ide {
 				command:Port::empty(),
 				alt_status:Port::empty(),
 				disk_type:DiskType::Unknown,
+				access_type:AccessType::Unknown,
 				num_sectors:0,
 				master:false
 			}; 4],
@@ -114,8 +123,18 @@ impl Ide {
 		self.num_disks = num_disks as u8;
 		println!("{} disks", self.num_disks);
 	}
+
+	pub fn get_disk(&mut self) -> Option<&mut IdeDisk> {
+		if self.num_disks > 0 {
+			Some(&mut self.disks[0])
+		} else {
+			None
+		}
+	}
 }
 
+const ATA_CMD_READ_PIO: u8 = 0x20;
+const ATA_CMD_WRITE_PIO: u8 = 0x30;
 const ATA_CMD_IDENTIFY_PACKET : u8 = 0xA1;
 const ATA_CMD_IDENTIFY: u8 = 0xEC;
 
@@ -141,6 +160,7 @@ impl IdeDisk {
 				command:Port::new(base + 7),
 				alt_status:Port::new(ctrl + 2),
 				disk_type:DiskType::Unknown,
+				access_type:AccessType::Unknown,
 				num_sectors:0,
 				master:master
 			};
@@ -254,14 +274,74 @@ impl IdeDisk {
 		IdeDisk::print_range(27, 47, &data);
 		println!("");
 
+		//the total number of 48 bit addressable sectors on the drive
 		self.num_sectors = 
 			(data[100] as u64) | 
 			((data[101] as u64) << 16) |
 			((data[102] as u64) << 32) |
 			((data[103] as u64) << 48);
+		//if >0 then LBA48 is 'probably' supported? (http://wiki.osdev.org/ATA_PIO_Mode)
+		if self.num_sectors > 0 {
+			self.access_type = AccessType::LBA48;
+		} else {
+			self.num_sectors =
+				(data[60] as u64) |
+				((data[61] as u64) << 16);
+			if self.num_sectors > 0 {
+				self.access_type = AccessType::LBA28;
+			}
+		}
+
 		println!("\t\tSize: {} MB", (self.num_sectors / 2048) as usize);
 
 		true
+	}
+
+	fn ata_pio(&mut self, write:bool, block:u64, buffer:&mut[u16]) -> Result<usize, &'static str> {
+		if buffer.len() == 0 {
+			return Err("Buffer not be zero length")
+		}
+		if buffer.len() % 256 != 0 {
+			return Err("Buffer must be a multiple of 256")
+		}
+		let sector_count = (buffer.len() / 256) as u16;
+
+		self.ata_write(if write {
+			ATA_CMD_WRITE_PIO
+		} else {
+			ATA_CMD_READ_PIO
+		}, block, sector_count);
+
+		let mut numRead : usize = 0;
+		for sector in 0..sector_count as usize {
+			//Wait for busy status flag to clear
+			while (self.alt_status.read() & ATA_SR_BSY) == ATA_SR_BSY {}
+
+			//Check for errors
+			let state = self.alt_status.read();
+			if (state & ATA_SR_ERR) == ATA_SR_ERR {
+				return Err("Read/write Error");
+			} else if (state & ATA_SR_DF) == ATA_SR_DF {
+				return Err("Drive Fault");
+			} else if (state & ATA_SR_DRQ) != ATA_SR_DRQ {
+				return Err("Expected Data Request Ready");
+			}
+
+			if write {
+				return Err("Not implemented ;)");
+			} else {
+				for word in 0..256 {
+					buffer[numRead] = self.data.read();
+					numRead += 1;
+				}
+			}
+		}
+
+		Ok(numRead)
+	}
+
+	pub fn read(&mut self, block:u64, buffer:&mut[u16]) -> Result<usize, &'static str> {
+		self.ata_pio(false, block, buffer)
 	}
 }
 

@@ -30,6 +30,20 @@ pub extern fn rust_main(multiboot_information_address: usize) {
 	io::init_io();
     println!("Ready");
 
+    let disk = unsafe { io::ide::IDE.get_disk() }.unwrap();
+    let mut first_sector : [u16;256] = [0;256];
+    match disk.read(0, &mut first_sector) {
+        Ok(size) => {
+            println!("Read {}:", size);
+            for word in 0..10 {
+                print!("{:X} ", first_sector[word]);
+            }
+        },
+        Err(val) => {
+            println!("{}", val);
+        }
+    }
+
 	loop {}
 }
 

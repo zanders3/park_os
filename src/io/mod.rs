@@ -1,7 +1,7 @@
 pub mod port;
 mod pic;
-mod ide;
 mod pci;
+pub mod ide;
 pub mod keyboard;
 pub mod timer;
 
