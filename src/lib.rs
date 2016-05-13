@@ -39,8 +39,8 @@ pub extern fn rust_main(multiboot_information_address: usize) {
                 print!("{:X} ", first_sector[word]);
             }
         },
-        Err(val) => {
-            println!("{}", val);
+        Err(err) => {
+            println!("Error: {}", err);
         }
     }
 

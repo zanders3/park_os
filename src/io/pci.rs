@@ -1,5 +1,5 @@
 use io::port::{Io, Port};
-use io::ide::{Ide, IDE};
+use io::ide::IDE;
 
 pub struct PciConfig {
 	bus: u8,

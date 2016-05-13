@@ -16,7 +16,7 @@ enum AccessType {
 }
 
 #[derive(Copy,Clone)]
-struct IdeDisk {
+pub struct IdeDisk {
 	bus_command:Port<u8>,
 	bus_status:Port<u8>,
 	data:Port<u16>,
@@ -45,24 +45,7 @@ pub static mut IDE: Ide = unsafe { Ide::new() };
 impl Ide {
 	pub const unsafe fn new() -> Ide {
 		Ide {
-			disks: [IdeDisk {
-				bus_command:Port::empty(),
-				bus_status:Port::empty(),
-				data:Port::empty(),
-				error:Port::empty(),
-				sector_count:Port::empty(),
-				sector0:Port::empty(),
-				sector1:Port::empty(),
-				sector2:Port::empty(),
-				devsel:Port::empty(),
-				status:Port::empty(),
-				command:Port::empty(),
-				alt_status:Port::empty(),
-				disk_type:DiskType::Unknown,
-				access_type:AccessType::Unknown,
-				num_sectors:0,
-				master:false
-			}; 4],
+			disks: [IdeDisk::empty(); 4],
 			num_disks: 0
 		}
 	}
@@ -92,14 +75,14 @@ impl Ide {
 			let busmaster = bar4;
 			let data = bar0;
 			let control = bar1;
-			let irq = 0xE;
+			//let irq = 0xE;
 			println!("    Primary Master");
-			if let Some(disk) = IdeDisk::new(busmaster, data, control, irq, true) {
+			if let Some(disk) = IdeDisk::new(busmaster, data, control, true) {
 				self.disks[num_disks] = disk;
 				num_disks += 1;
 			}
 			println!("    Primary Slave");
-			if let Some(disk) = IdeDisk::new(busmaster, data, control, irq, false) {
+			if let Some(disk) = IdeDisk::new(busmaster, data, control, false) {
 				self.disks[num_disks] = disk;
 				num_disks += 1;
 			}
@@ -108,14 +91,14 @@ impl Ide {
 			let busmaster = bar4 + 8;
 			let data = bar2;
 			let control = bar3;
-			let irq = 0xF;
+			//let irq = 0xF;
 			println!("    Secondary Master");
-			if let Some(disk) = IdeDisk::new(busmaster, data, control, irq, true) {
+			if let Some(disk) = IdeDisk::new(busmaster, data, control, true) {
 				self.disks[num_disks] = disk;
 				num_disks += 1;
 			}
 			println!("    Secondary Slave");
-			if let Some(disk) = IdeDisk::new(busmaster, data, control, irq, false) {
+			if let Some(disk) = IdeDisk::new(busmaster, data, control, false) {
 				self.disks[num_disks] = disk;
 				num_disks += 1;
 			}
@@ -144,7 +127,28 @@ const ATA_SR_DRQ: u8 = 0x08;//Data Request Ready
 const ATA_SR_ERR: u8 = 0x01;//Error
 
 impl IdeDisk {
-	pub fn new(busmaster:u16, base:u16, ctrl:u16, irq:u8, master:bool) -> Option<IdeDisk> {
+	pub const fn empty() -> IdeDisk {
+		IdeDisk {
+			bus_command:Port::empty(),
+			bus_status:Port::empty(),
+			data:Port::empty(),
+			error:Port::empty(),
+			sector_count:Port::empty(),
+			sector0:Port::empty(),
+			sector1:Port::empty(),
+			sector2:Port::empty(),
+			devsel:Port::empty(),
+			status:Port::empty(),
+			command:Port::empty(),
+			alt_status:Port::empty(),
+			disk_type:DiskType::Unknown,
+			access_type:AccessType::Unknown,
+			num_sectors:0,
+			master:false
+		}
+	}
+
+	pub fn new(busmaster:u16, base:u16, ctrl:u16, master:bool) -> Option<IdeDisk> {
 		unsafe {
 			let mut disk = IdeDisk {
 				bus_command:Port::new(busmaster),
@@ -312,8 +316,8 @@ impl IdeDisk {
 			ATA_CMD_READ_PIO
 		}, block, sector_count);
 
-		let mut numRead : usize = 0;
-		for sector in 0..sector_count as usize {
+		let mut num_read : usize = 0;
+		for _ in 0..sector_count as usize {
 			//Wait for busy status flag to clear
 			while (self.alt_status.read() & ATA_SR_BSY) == ATA_SR_BSY {}
 
@@ -330,14 +334,14 @@ impl IdeDisk {
 			if write {
 				return Err("Not implemented ;)");
 			} else {
-				for word in 0..256 {
-					buffer[numRead] = self.data.read();
-					numRead += 1;
+				for _ in 0..256 {
+					buffer[num_read] = self.data.read();
+					num_read += 1;
 				}
 			}
 		}
 
-		Ok(numRead)
+		Ok(num_read)
 	}
 
 	pub fn read(&mut self, block:u64, buffer:&mut[u16]) -> Result<usize, &'static str> {
