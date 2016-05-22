@@ -14,6 +14,7 @@ mod vga_buffer;
 mod memory;
 mod x86;
 mod io;
+mod fat;
 
 use io::port::Io;
 
@@ -31,16 +32,16 @@ pub extern fn rust_main(multiboot_information_address: usize) {
     println!("Ready");
 
     let disk = unsafe { io::ide::IDE.get_disk() }.unwrap();
-    let mut first_sector : [u16;256] = [0;256];
-    match disk.read(0, &mut first_sector) {
-        Ok(size) => {
-            println!("Read {}:", size);
-            for word in 0..10 {
-                print!("{:X} ", first_sector[word]);
+    let dir_res = fat::FatFS::init_fs(disk)
+        .and_then(|mut fs| fs.list_directory());
+    match dir_res {
+        Ok(dir) => {
+            for file in dir {
+                println!("{}", file.get_name());
             }
-        },
+        }
         Err(err) => {
-            println!("Error: {}", err);
+            println!("{}", err);
         }
     }
 
